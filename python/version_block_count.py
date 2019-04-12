@@ -141,8 +141,8 @@ class Coin:
         stat_dict = cls.openfile(cls.blocks_tmp)
         _last_key = sorted(stat_dict.keys())[-1]
 
-        version_name = {'20000000': '\033[91m20000000 old VersionBlock\033[0m',
-                        '20000008': '\033[92m20000008 GN VersionBlock\033[0m' }
+        version_name = {'20000000': '20000000 old VersionBlock',
+                        '20000008': '20000008 GN VersionBlock'}
 
 
         versionHex_list = []
@@ -162,7 +162,7 @@ class Coin:
             else:
                 v_name = i + ' xxxx'
 
-            print('{:<35s}'.format(v_name), end=': ')
+            print('{:<25s}'.format(v_name), end=': ')
             print('{:>5s}'.format(str(count_versionHex[i])), end=' ')
             print('{:>5s}'.format(str(int(round(count_versionHex[i]/versionHex_sum*100, 0)))), end='%\n')
 
