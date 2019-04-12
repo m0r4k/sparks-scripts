@@ -17,6 +17,9 @@ class Coin:
     blocks_tmp = tdir + '/sparks_blocks.json'
     _now_ = int(datetime.datetime.now().strftime("%s"))
 
+    block_amount = sys.argv[0]
+
+
     @classmethod
     def checkmnsync(cls):
         check = cls.clicmd('mnsync status')
@@ -87,31 +90,45 @@ class Coin:
         return False
 
     @classmethod
-    def buildfiles(cls, start_block=0, block_amount=False):
+    def buildfiles(cls, start_block=0, block_amount=999):
         cls.checkmnsync()
         stop_block = 0
         block_json = {}
 
+        if len(sys.argv) > 1:
+            block_amount = int(sys.argv[1]) - 1
+            print(block_amount)
+
         if start_block == 0:
             start_block = cls.currentblock(start_block)
 
-        if block_amount == False:
-            stop_block = start_block - 999
-        else:
+        if block_amount != 999:
             stop_block = start_block - block_amount
+
 
         if cls.openfile(cls.blocks_tmp):
             block_json = cls.openfile(cls.blocks_tmp)
-            _last_key = int(sorted(block_json.keys())[-1])
+            _key = sorted(block_json.keys())
+            _last_key = int(_key[-1])
+            _first_key = int(_key[0])
 
-            if _last_key != start_block and _last_key != 0:
+
+            if _last_key != start_block and  _last_key != 0:
                 stop_block = _last_key
             else:
                 stop_block = start_block
 
-        if start_block != stop_block:
+            if _first_key != stop_block and _first_key != 0 and len(block_json) < block_amount:
+                start_block = _first_key
+            else:
+                start_block = stop_block
+
+        print(len(block_json))
+
+        if start_block != stop_block or len(block_json) < block_amount:
             print('\033[33;5mWait till download is done!\033[0m')
-            while stop_block <=start_block:
+
+            while stop_block <= start_block:
                 blockhash = cls.clicmd('getblockhash ' + str(stop_block), 'string')
                 fullblock = cls.clicmd('getblock "'+blockhash+'" ')
                 block_json[str(stop_block)] = fullblock
@@ -123,12 +140,12 @@ class Coin:
             # delete last line
             sys.stdout.write('\x1b[2K')
 
-            cp_block_json = block_json.copy()
-            for i in block_json:
-                if int(i) < int(start_block) - 999:
-                    del cp_block_json[i]
+        cp_block_json = block_json.copy()
+        for i in block_json:
+            if int(i) < int(start_block) - block_amount:
+                del cp_block_json[i]
 
-            cls.writefile(cls.blocks_tmp, cp_block_json)
+        cls.writefile(cls.blocks_tmp, cp_block_json)
 
     @classmethod
     def showstat(cls, blockcount=1000):
@@ -175,6 +192,8 @@ class Coin:
 def main():
     Coin.buildfiles()
     Coin.showstat()
+    print('---')
+    print(Coin.block_amount)
 
 
 if __name__ == "__main__":
