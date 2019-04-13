@@ -17,7 +17,7 @@ class Coin:
     blocks_tmp = tdir + '/sparks_blocks.json'
     _now_ = int(datetime.datetime.now().strftime("%s"))
 
-    argv_block_count = 99
+    argv_block_count = 999
 
     if len(sys.argv) > 1:
         argv_block_count = int(sys.argv[1]) - 1
