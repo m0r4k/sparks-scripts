@@ -17,8 +17,10 @@ class Coin:
     blocks_tmp = tdir + '/sparks_blocks.json'
     _now_ = int(datetime.datetime.now().strftime("%s"))
 
-    block_amount = sys.argv[0]
+    argv_block_count = 99
 
+    if len(sys.argv) > 1:
+        argv_block_count = int(sys.argv[1]) - 1
 
     @classmethod
     def checkmnsync(cls):
@@ -90,21 +92,26 @@ class Coin:
         return False
 
     @classmethod
-    def buildfiles(cls, start_block=0, block_amount=999):
-        cls.checkmnsync()
-        stop_block = 0
-        block_json = {}
+    def loadblocks(cls, block_json, start_block, stop_block):
 
-        if len(sys.argv) > 1:
-            block_amount = int(sys.argv[1]) - 1
-            print(block_amount)
+        while stop_block <= start_block:
+            blockhash = cls.clicmd('getblockhash ' + str(stop_block), 'string')
+            fullblock = cls.clicmd('getblock "' + blockhash + '" ')
+            block_json[str(stop_block)] = fullblock
+            stop_block = int(stop_block) + 1
+
+        return block_json
+
+    @classmethod
+    def buildfiles(cls, start_block=0):
+        cls.checkmnsync()
+        block_json = {}
+        block_count = cls.argv_block_count
 
         if start_block == 0:
             start_block = cls.currentblock(start_block)
 
-        if block_amount != 999:
-            stop_block = start_block - block_amount
-
+        stop_block = start_block - block_count
 
         if cls.openfile(cls.blocks_tmp):
             block_json = cls.openfile(cls.blocks_tmp)
@@ -112,40 +119,17 @@ class Coin:
             _last_key = int(_key[-1])
             _first_key = int(_key[0])
 
+            if _first_key != stop_block:
+                block_json = cls.loadblocks(block_json, _first_key, stop_block)
 
-            if _last_key != start_block and  _last_key != 0:
-                stop_block = _last_key
-            else:
-                stop_block = start_block
+            if _last_key != start_block:
+                block_json = cls.loadblocks(block_json, start_block, _last_key)
 
-            if _first_key != stop_block and _first_key != 0 and len(block_json) < block_amount:
-                start_block = _first_key
-            else:
-                start_block = stop_block
+        else:
+            block_json = cls.loadblocks(block_json, start_block, stop_block)
 
-        print(len(block_json))
+        cls.writefile(cls.blocks_tmp, block_json)
 
-        if start_block != stop_block or len(block_json) < block_amount:
-            print('\033[33;5mWait till download is done!\033[0m')
-
-            while stop_block <= start_block:
-                blockhash = cls.clicmd('getblockhash ' + str(stop_block), 'string')
-                fullblock = cls.clicmd('getblock "'+blockhash+'" ')
-                block_json[str(stop_block)] = fullblock
-                #print(fullblock)
-                stop_block = int(stop_block) + 1
-
-            # cursor up one line
-            sys.stdout.write('\x1b[1A')
-            # delete last line
-            sys.stdout.write('\x1b[2K')
-
-        cp_block_json = block_json.copy()
-        for i in block_json:
-            if int(i) < int(start_block) - block_amount:
-                del cp_block_json[i]
-
-        cls.writefile(cls.blocks_tmp, cp_block_json)
 
     @classmethod
     def showstat(cls, blockcount=1000):
@@ -158,18 +142,25 @@ class Coin:
         stat_dict = cls.openfile(cls.blocks_tmp)
         _last_key = sorted(stat_dict.keys())[-1]
 
+        start_block = int(_last_key) - int(cls.argv_block_count)
+
+        cp_stat_dict = stat_dict.copy()
+        for i in stat_dict:
+            if int(i) < int(start_block):
+                del cp_stat_dict[i]
+
+
         version_name = {'20000000': '20000000 old VersionBlock',
                         '20000008': '20000008 GN VersionBlock'}
 
-
         versionHex_list = []
-        for i in stat_dict:
-            versionHex_list.append(stat_dict[i]['versionHex'])
+        for i in cp_stat_dict:
+            versionHex_list.append(cp_stat_dict[i]['versionHex'])
 
         count_versionHex = collections.Counter(versionHex_list)
         versionHex_sum = summation(count_versionHex)
         print(' ')
-        print('{:<40s}'.format('MINED_BLOCKS [ blockheight = '+_last_key+']'), end='\n')
+        print('{:<40s}'.format('MINED_BLOCKS [ blockheight = ' + _last_key + ']'), end='\n')
         print('{:=<40s}'.format(''), end='\n')
 
         for i in count_versionHex:
@@ -181,19 +172,15 @@ class Coin:
 
             print('{:<25s}'.format(v_name), end=': ')
             print('{:>5s}'.format(str(count_versionHex[i])), end=' ')
-            print('{:>5s}'.format(str(int(round(count_versionHex[i]/versionHex_sum*100, 0)))), end='%\n')
+            print('{:>5s}'.format(str(int(round(count_versionHex[i] / versionHex_sum * 100, 0)))), end='%\n')
 
         print('{:-<40s}'.format(''), end='\n')
-        print("blocks searched = "+str(versionHex_sum)+" blocks")
-
-
+        print("blocks searched = " + str(versionHex_sum) + " blocks", end='\n \n')
 
 
 def main():
     Coin.buildfiles()
     Coin.showstat()
-    print('---')
-    print(Coin.block_amount)
 
 
 if __name__ == "__main__":
